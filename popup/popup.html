@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InGlish</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>InGlish</h1>
+      <p class="subtitle">让网页学习更轻松</p>
+    </div>
+
+    <div class="toggle-section">
+      <div class="toggle-label">
+        <span class="status-text" id="statusText">已禁用</span>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="enableToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="info-section">
+      <p class="wordlist-info">
+        单词表：<span id="wordlistCount">加载中...</span>
+      </p>
+    </div>
+
+    <div class="footer">
+      <p>v1.0.0</p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
