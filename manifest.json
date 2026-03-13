@@ -5,7 +5,8 @@
   "description": "通过替换中文网页中的考纲词汇为英文，帮助用户通过英语考试",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"

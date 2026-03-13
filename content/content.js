@@ -16,20 +16,72 @@ async function initContentScript() {
   // 初始化替换引擎
   await replacementEngine.init();
 
-  // 处理页面
-  replacementEngine.processPage();
+  // 如果已启用，处理页面
+  if (replacementEngine.isEnabled) {
+    replacementEngine.processPage();
+  }
 
-  // 监听设置变更
-  chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'local' && changes.isEnabled) {
-      console.log('设置变更:', changes.isEnabled.newValue);
-      if (changes.isEnabled.newValue) {
-        replacementEngine.processPage();
-      } else {
-        // 重新加载页面恢复原文
-        location.reload();
-      }
+  // 监听来自 popup 的消息
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'toggle') {
+      console.log('收到切换消息:', request.isEnabled);
+      replacementEngine.setEnabled(request.isEnabled).then(() => {
+        if (request.isEnabled) {
+          replacementEngine.processPage();
+        } else {
+          // 禁用时不刷新页面，而是恢复原文
+          restoreOriginalText();
+        }
+      });
     }
+    sendResponse({ status: 'ok' });
+  });
+
+  // 监听动态内容变化（MutationObserver）
+  observeDynamicContent();
+}
+
+/**
+ * 恢复原文（不刷新页面）
+ */
+function restoreOriginalText() {
+  const replacedElements = document.querySelectorAll('.inglish-replaced');
+  replacedElements.forEach(el => {
+    const original = el.dataset.original;
+    if (original) {
+      el.outerHTML = original;
+    }
+  });
+}
+
+/**
+ * 监听动态内容变化
+ */
+function observeDynamicContent() {
+  const observer = new MutationObserver((mutations) => {
+    if (!replacementEngine.isEnabled) return;
+
+    let hasNewContent = false;
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE && !node.classList?.contains('inglish-replaced')) {
+          hasNewContent = true;
+        }
+      });
+    });
+
+    if (hasNewContent) {
+      // 延迟处理，避免频繁触发
+      clearTimeout(window.inglishDebounceTimer);
+      window.inglishDebounceTimer = setTimeout(() => {
+        replacementEngine.processPage();
+      }, 500);
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
   });
 }
 

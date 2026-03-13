@@ -28,10 +28,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const isEnabled = e.target.checked;
     chrome.storage.local.set({ isEnabled: isEnabled }, () => {
       updateStatusText(isEnabled);
-      // 通知当前标签页刷新
+      // 通知当前标签页应用更改，不刷新页面
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) {
-          chrome.tabs.reload(tabs[0].id);
+          // 发送消息给 content script 而不是刷新页面
+          chrome.tabs.sendMessage(tabs[0].id, { 
+            action: 'toggle', 
+            isEnabled: isEnabled 
+          }, () => {
+            // 如果 content script 未加载，忽略错误
+            if (chrome.runtime.lastError) {
+              console.log('Content script not ready, page will apply on next load');
+            }
+          });
         }
       });
     });
