@@ -1,20 +1,33 @@
 /**
  * NLP分词处理器
- * 预留接口：未来可替换为真正的NLP分词引擎
+ * 使用浏览器内置 Intl.Segmenter 进行分词
  */
 
 class NLPProcessor {
   constructor() {
     this.segmenter = null;
+    this.useNativeSegmenter = false;
   }
 
   /**
    * 初始化分词器
+   * 优先使用浏览器内置的 Intl.Segmenter，不支持则回退到正则
    */
   init() {
-    // 暂时使用正则模拟分词
-    // 未来可替换为 Intl.Segmenter 或 Jieba.js
-    console.log('NLP处理器初始化完成（当前使用正则实现）');
+    // 检测浏览器是否支持 Intl.Segmenter
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+      try {
+        this.segmenter = new Intl.Segmenter('zh-CN', { granularity: 'word' });
+        this.useNativeSegmenter = true;
+        console.log('NLP处理器初始化完成（使用浏览器内置 Intl.Segmenter 分词）');
+      } catch (error) {
+        console.warn('Intl.Segmenter 初始化失败，回退到正则分词:', error);
+        this.useNativeSegmenter = false;
+      }
+    } else {
+      console.log('NLP处理器初始化完成（浏览器不支持 Intl.Segmenter，使用正则分词）');
+      this.useNativeSegmenter = false;
+    }
   }
 
   /**
@@ -23,6 +36,51 @@ class NLPProcessor {
    * @returns {Array} 分词结果 [{word: '词汇', start: 0, end: 2}, ...]
    */
   segment(text) {
+    if (this.useNativeSegmenter && this.segmenter) {
+      return this.segmentWithIntl(text);
+    }
+    return this.segmentWithRegex(text);
+  }
+
+  /**
+   * 使用浏览器内置 Intl.Segmenter 分词
+   * 支持中文、日文、韩文等语言的语义分词
+   * @param {string} text - 待分词文本
+   * @returns {Array} 分词结果
+   */
+  segmentWithIntl(text) {
+    const results = [];
+    let currentIndex = 0;
+
+    // 使用 Intl.Segmenter 进行分词
+    const segments = this.segmenter.segment(text);
+
+    for (const segment of segments) {
+      const word = segment.segment;
+      const isWordLike = segment.isWordLike;
+
+      // 只保留中文字词（isWordLike 为 true 且包含中文字符）
+      if (isWordLike && /[\u4e00-\u9fa5]/.test(word)) {
+        results.push({
+          word: word,
+          start: currentIndex,
+          end: currentIndex + word.length
+        });
+      }
+
+      currentIndex += word.length;
+    }
+
+    return results;
+  }
+
+  /**
+   * 使用正则分词（回退方案）
+   * 当浏览器不支持 Intl.Segmenter 时使用
+   * @param {string} text - 待分词文本
+   * @returns {Array} 分词结果
+   */
+  segmentWithRegex(text) {
     const results = [];
     // 使用正则匹配中文词汇
     // [\u4e00-\u9fa5]+ 匹配连续中文字符

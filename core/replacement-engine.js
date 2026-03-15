@@ -141,7 +141,8 @@ class ReplacementEngine {
    */
   createReplacementTag(original, replacement) {
     // 使用data属性存储原始文本
-    return `<span class="inglish-replaced" data-original="${original}">${replacement}</span>`;
+    // 在替换词后加空格，避免连续替换的词汇连在一起
+    return `<span class="inglish-replaced" data-original="${original}">${replacement}</span> `;
   }
 
   /**
@@ -184,20 +185,120 @@ class ReplacementEngine {
   shouldSkipNode(node) {
     const tagName = node.tagName && node.tagName.toLowerCase();
     const skipTags = ['script', 'style', 'noscript', 'iframe', 'svg', 'code', 'pre'];
-    return skipTags.includes(tagName);
+
+    // 跳过特定标签
+    if (skipTags.includes(tagName)) {
+      return true;
+    }
+
+    // 跳过已替换的元素和tooltip
+    if (node.classList) {
+      if (node.classList.contains('inglish-replaced') ||
+          node.classList.contains('inglish-tooltip')) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
-   * 处理整个页面
+   * 处理整个页面（异步分批处理，避免阻塞渲染）
    */
   processPage() {
     if (!this.isEnabled) {
       return;
     }
 
-    console.log('开始处理页面...');
-    this.processNode(document.body);
-    console.log('页面处理完成');
+    console.log('开始异步分批处理页面...');
+    this.processNodeAsync(document.body);
+  }
+
+  /**
+   * 异步分批处理节点
+   * @param {Node} node - DOM节点
+   */
+  processNodeAsync(node) {
+    const nodesToProcess = [];
+    this.collectTextNodes(node, nodesToProcess);
+    
+    if (nodesToProcess.length === 0) {
+      return;
+    }
+    
+    console.log(`收集到 ${nodesToProcess.length} 个文本节点，开始分批处理...`);
+    
+    // 分批异步处理，每批10个节点
+    this.processBatches(nodesToProcess, 0);
+  }
+
+  /**
+   * 收集所有文本节点
+   * @param {Node} node - DOM节点
+   * @param {Array} result - 存储结果的数组
+   */
+  collectTextNodes(node, result) {
+    if (this.shouldSkipNode(node)) {
+      return;
+    }
+    
+    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+      // 跳过父元素已被处理过的节点
+      if (node.parentElement && node.parentElement.closest('.inglish-replaced')) {
+        return;
+      }
+      result.push(node);
+    } else {
+      node.childNodes.forEach(child => {
+        this.collectTextNodes(child, result);
+      });
+    }
+  }
+
+  /**
+   * 分批处理节点
+   * @param {Array} nodes - 节点数组
+   * @param {number} index - 当前索引
+   */
+  processBatches(nodes, index) {
+    if (index >= nodes.length) {
+      console.log('页面处理完成');
+      return;
+    }
+    
+    // 每批处理10个节点
+    const batchSize = 10;
+    const endIndex = Math.min(index + batchSize, nodes.length);
+    
+    for (let i = index; i < endIndex; i++) {
+      this.processTextNode(nodes[i]);
+    }
+    
+    // 下一批延迟处理，让浏览器有时间渲染
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        this.processBatches(nodes, endIndex);
+      }, 0);
+    });
+  }
+
+  /**
+   * 处理单个文本节点
+   * @param {Node} textNode - 文本节点
+   */
+  processTextNode(textNode) {
+    const text = textNode.textContent;
+    const context = textNode.parentElement ? textNode.parentElement.textContent : '';
+
+    // 执行替换
+    const replaced = this.replace(text, context);
+
+    // 如果有变化，替换节点内容
+    if (replaced !== text) {
+      const span = document.createElement('span');
+      span.innerHTML = replaced;
+      textNode.parentNode.replaceChild(span, textNode);
+    }
   }
 
   /**
