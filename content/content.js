@@ -41,6 +41,16 @@ async function initContentScript() {
           restoreOriginalText();
         }
       });
+    } else if (request.action === 'reloadWordlist') {
+      console.log('收到重新加载词表消息');
+      // 重新加载词表并处理页面
+      replacementEngine.loadWordlist().then(() => {
+        if (replacementEngine.isEnabled) {
+          // 清除之前的替换，重新处理
+          restoreOriginalText();
+          replacementEngine.processPage();
+        }
+      });
     }
     sendResponse({ status: 'ok' });
   });

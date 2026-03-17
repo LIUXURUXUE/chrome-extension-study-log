@@ -34,7 +34,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["data/wordlist.json"],
+      "resources": ["data/wordlist.json", "cet6_wordlist_split.json"],
       "matches": ["<all_urls>"]
     }
   ]
