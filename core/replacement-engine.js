@@ -94,10 +94,8 @@ class ReplacementEngine {
       const englishOptions = this.findMatchingWords(chineseWord);
 
       if (englishOptions) {
-        // 上下文分析选择最佳翻译
-        const selectedEnglish = this.nlp.analyzeContext(chineseWord, englishOptions, context);
-        // 生成带样式的HTML
-        result += this.createReplacementTag(chineseWord, selectedEnglish);
+        // 生成带样式的HTML，传递所有英文选项用于滚动播放
+        result += this.createReplacementTag(chineseWord, englishOptions);
       } else {
         // 没有匹配到，保留原文
         result += chineseWord;
@@ -136,13 +134,17 @@ class ReplacementEngine {
   /**
    * 创建替换标签
    * @param {string} original - 原始中文
-   * @param {string} replacement - 英文替换
+   * @param {string|Array} replacement - 英文替换（单个或多个）
    * @returns {string} HTML标签
    */
   createReplacementTag(original, replacement) {
     // 使用data属性存储原始文本
     // 在替换词后加空格，避免连续替换的词汇连在一起
-    return `<span class="inglish-replaced" data-original="${original}">${replacement}</span> `;
+    const options = Array.isArray(replacement) ? replacement : [replacement];
+    // 随机选择一个英文
+    const displayText = options[Math.floor(Math.random() * options.length)];
+
+    return `<span class="inglish-replaced" data-original="${original}">${displayText}</span> `;
   }
 
   /**
